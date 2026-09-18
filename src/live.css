@@ -1,0 +1,3 @@
+.kakao-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.data-status { margin: 0; padding: 0 20px 12px; color: #718078; font-size: 11px; line-height: 1.5; }
+.route-button { display: grid !important; place-items: center; text-decoration: none; }
