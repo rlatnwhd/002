@@ -18,7 +18,9 @@ export function nearbyTiles(origin) {
   return keys
 }
 
-export function nearest(places, origin, limit = 100) {
-  return places.map(place => ({ ...place, meters: distance(origin, place) }))
-    .filter(place => place.meters <= RADIUS_METERS).sort((a, b) => a.meters - b.meters).slice(0, limit)
+export function nearest(places, searchCenter, limit = 100, userPosition = searchCenter) {
+  return places.filter(place => distance(searchCenter, place) <= RADIUS_METERS)
+    .map(place => ({ ...place, meters: userPosition ? distance(userPosition, place) : null }))
+    .sort((a, b) => userPosition ? a.meters - b.meters : distance(searchCenter, a) - distance(searchCenter, b))
+    .slice(0, limit)
 }

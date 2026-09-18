@@ -20,10 +20,10 @@ export function institutionCodes(index, origin) {
   return [...new Set(nearbyTiles(origin).flatMap(key => index.tiles[key]?.codes ?? []))]
 }
 
-export async function localPlaces(source, origin, index, signal) {
+export async function localPlaces(source, origin, index, signal, userPosition = origin) {
   const keys = nearbyTiles(origin).filter(key => index.tiles[key]?.sources.includes(source.id))
   const groups = await Promise.all(keys.map(key => jsonFile(`nearby/${index.version}/${source.id}/${key}.json`, signal)))
-  return nearest(groups.flat(), origin)
+  return nearest(groups.flat(), origin, 100, userPosition)
 }
 
 export async function regionalRecords(source, code, serviceKey, signal, onPage) {

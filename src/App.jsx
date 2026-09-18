@@ -12,15 +12,16 @@ const sources=[{id:'parking',type:'주차장',icon:'P',color:'#3579d6',endpoint:
 const categories=[...sources,...fileSources]
 const tabs=['전체','주차장','휴지통','공원','화장실','금연구역','무료와이파이','자전거보관소']
 const pick=(x,k,d='')=>k.map(a=>x[a]).find(a=>a!==undefined&&a!==null&&a!=='')??d
-const dText=x=>x<1000?`${Math.round(x)}m`:`${(x/1000).toFixed(1)}km`
+const dText=x=>x===null?'거리 확인 불가':x<1000?`${Math.round(x)}m`:`${(x/1000).toFixed(1)}km`
 const sdk=()=>window.kakao?.maps?Promise.resolve(window.kakao):new Promise((ok,no)=>{const s=document.createElement('script');s.src=`https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey=${import.meta.env.VITE_KAKAO_MAP_KEY}`;s.onload=()=>window.kakao.maps.load(()=>ok(window.kakao));s.onerror=no;document.head.append(s)})
 function item(s,r,i){const lat=Number(pick(r,['latitude','lat','LAT'])),lng=Number(pick(r,['longitude','lot','LOT']));const name=s.id==='trash'?pick(r,['instlPlcNm'],'휴지통'):s.id==='parking'?pick(r,['prkplceNm'],'주차장'):pick(r,['parkNm'],'공원');const address=pick(r,s.id==='trash'?['lctnRoadNm','lctnLotnoAddr']:['rdnmadr','lnmadr'],'주소 미제공');const info=s.id==='trash'?{종류:pick(r,['trashCanKnd'],'미분류'),설치위치:pick(r,['actlPstn'],'미제공')}:s.id==='parking'?{구분:pick(r,['prkplceSe'],'미제공'),유형:pick(r,['prkplceType'],'미제공'),주차면수:pick(r,['prkcmprt'],'미제공'),운영요일:pick(r,['operDay'],'미제공'),평일운영:`${pick(r,['weekdayOperOpenHhmm'],'미제공')} ~ ${pick(r,['weekdayOperColseHhmm'],'미제공')}`,요금정보:pick(r,['parkingchrgeInfo'],'미제공'),기본요금:pick(r,['basicCharge'])?`${pick(r,['basicTime'],'30')}분 ${Number(pick(r,['basicCharge'])).toLocaleString()}원`:'미제공',결제방법:pick(r,['metpay'],'미제공'),관리기관:pick(r,['institutionNm'],'미제공'),전화번호:pick(r,['phoneNumber'],'미제공'),장애인주차구역:pick(r,['pwdbsPpkZoneYn'],'미제공')}:{시설구분:pick(r,['parkSe'],'공원')};return {id:`${s.id}-${i}`,type:s.type,icon:s.icon,color:s.color,name,address,lat,lng,info}}
 function Popup({x,onClose}){return <article className="detail-card"><button className="close-detail" onClick={onClose}>×</button><p className="detail-type">{x.type} · {dText(x.meters)}</p><h2>{x.name}</h2><p className="detail-address">⌖ {x.address}</p><div className="detail-stats">{Object.entries(x.info).map(([k,v])=><span key={k}><b>{k}</b> {v}</span>)}</div></article>}
 export default function App(){
  const el=useRef(),map=useRef(),markers=useRef([]),user=useRef()
- const [origin,setOrigin]=useState(null),[tab,setTab]=useState('전체'),[selected,setSelected]=useState(null),[query,setQuery]=useState(''),[note,setNote]=useState('현재 위치를 확인 중입니다.')
+ const [searchCenter,setSearchCenter]=useState(null),[tab,setTab]=useState('전체'),[selected,setSelected]=useState(null),[query,setQuery]=useState(''),[note,setNote]=useState('현재 위치를 확인 중입니다.')
+ const [userPosition,setUserPosition]=useState(null)
  const [data,setData]=useState({key:'',groups:{}})
- const originKey=origin?`${origin.lat},${origin.lng}`:''
+ const searchKey=searchCenter?`${searchCenter.lat},${searchCenter.lng}`:''
  useEffect(()=>{
    let disposed=false
    let button
@@ -30,21 +31,22 @@ export default function App(){
      navigator.geolocation.getCurrentPosition(({coords})=>{
        if(disposed)return
        const p={lat:coords.latitude,lng:coords.longitude}
-       setOrigin(p);setNote('')
+       setUserPosition(previous=>previous??p)
+       setSearchCenter(p);setNote('')
        const pos=new k.maps.LatLng(p.lat,p.lng)
        map.current.setCenter(pos)
        user.current=new k.maps.Marker({map:map.current,position:pos,title:'내 위치'})
        button=document.createElement('button');button.className='return-location-button';button.textContent='◎ 내 위치로 이동'
-       button.onclick=()=>{map.current.setCenter(pos);setOrigin(p);setNote('');setSelected(null)}
+       button.onclick=()=>{map.current.setCenter(pos);setSearchCenter(p);setNote('');setSelected(null)}
        el.current.appendChild(button)
      },()=>{if(!disposed)setNote('현재 위치를 사용할 수 없습니다. 주소를 검색하거나 지도에서 재검색해주세요.')},{enableHighAccuracy:false,maximumAge:60000,timeout:8000})
    }).catch(()=>{if(!disposed)setNote('지도를 불러오지 못했습니다. 새로고침해주세요.')})
    return()=>{disposed=true;button?.remove();user.current?.setMap(null)}
  },[])
  useEffect(()=>{
-   if(!origin)return
+   if(!searchCenter)return
    const controller=new AbortController(),signal=controller.signal
-   const key=`${origin.lat},${origin.lng}`
+   const key=`${searchCenter.lat},${searchCenter.lng}`
    const update=(id,entry)=>{
      if(signal.aborted)return
      setData(previous=>({key,groups:{...(previous.key===key?previous.groups:{}),[id]:entry}}))
@@ -53,20 +55,20 @@ export default function App(){
    localIndex(signal).then(index=>{
      if(signal.aborted)return
      for(const source of fileSources){
-       localPlaces(source,origin,index,signal).then(places=>update(source.id,{places,loading:false})).catch(()=>update(source.id,{places:[],loading:false,error:'파일을 읽지 못했습니다.'}))
+       localPlaces(source,searchCenter,index,signal,userPosition).then(places=>update(source.id,{places,loading:false})).catch(()=>update(source.id,{places:[],loading:false,error:'파일을 읽지 못했습니다.'}))
      }
-     const codes=institutionCodes(index,origin)
+     const codes=institutionCodes(index,searchCenter)
      const tasks=[]
      for(const source of sources){
        if(!codes.length){update(source.id,{places:[],loading:false,error:'이 지역의 조회 정보를 찾지 못했습니다.'});continue}
        const results=new Map()
        let pending=codes.length,failed=0
-       const publish=()=>update(source.id,{places:nearest([...results.values()].flat(),origin),loading:pending>0,error:failed?'일부 시설을 불러오지 못했습니다. 다시 검색해주세요.':''})
+       const publish=()=>update(source.id,{places:nearest([...results.values()].flat(),searchCenter,100,userPosition),loading:pending>0,error:failed?'일부 시설을 불러오지 못했습니다. 다시 검색해주세요.':''})
        for(const code of codes)tasks.push(async()=>{
          try{
            await regionalRecords(source,code,import.meta.env.VITE_DATA_GO_KR_SERVICE_KEY,signal,rows=>{
              const places=rows.map((row,i)=>source.id==='no-smoking'?normalizeNoSmoking(row,i,code):item(source,row,`${code}-${i}`))
-             results.set(code,nearest(places,origin));publish()
+             results.set(code,nearest(places,searchCenter,100,userPosition));publish()
            })
          }catch{if(!signal.aborted)failed+=1}
          finally{pending-=1;publish()}
@@ -78,11 +80,11 @@ export default function App(){
      void runLimited(interleaved,signal)
    }).catch(()=>{for(const source of categories)update(source.id,{places:[],loading:false,error:'주변 시설을 불러오지 못했습니다. 다시 검색해주세요.'})})
    return()=>controller.abort()
- },[origin])
+ },[searchCenter,userPosition])
  const shown=useMemo(()=>{
-   if(!origin||data.key!==`${origin.lat},${origin.lng}`)return[]
-   return nearest(categories.filter(source=>tab==='전체'||source.type===tab).flatMap(source=>data.groups[source.id]?.places??[]),origin)
- },[data,tab,origin])
+   if(!searchCenter||data.key!==`${searchCenter.lat},${searchCenter.lng}`)return[]
+   return nearest(categories.filter(source=>tab==='전체'||source.type===tab).flatMap(source=>data.groups[source.id]?.places??[]),searchCenter,100,userPosition)
+ },[data,tab,searchCenter,userPosition])
  useEffect(()=>{
    if(!map.current)return
    let disposed=false
@@ -104,22 +106,22 @@ export default function App(){
    }
    return()=>{disposed=true;activeMarkers.forEach(marker=>marker.setMap(null))}
  },[shown])
- const search=()=>{if(!query.trim()||!map.current)return;new window.kakao.maps.services.Geocoder().addressSearch(query,(r,s)=>{if(s===window.kakao.maps.services.Status.OK){const p={lat:+r[0].y,lng:+r[0].x};map.current.setCenter(new window.kakao.maps.LatLng(p.lat,p.lng));setOrigin(p);setNote('');setSelected(null)}else setNote('주소를 찾지 못했습니다.')})};const recenter=()=>{if(!map.current)return;const p=map.current.getCenter();setOrigin({lat:p.getLat(),lng:p.getLng()});setNote('');setSelected(null)}
- useEffect(()=>{const input=document.querySelector('.address-search input');if(!input)return undefined;let timer;let menu;const clear=()=>{menu?.remove();menu=null};const show=(places)=>{clear();if(!places.length)return;menu=document.createElement('div');menu.className='autocomplete-menu';places.forEach(place=>{const button=document.createElement('button');button.innerHTML=`<b>${place.place_name}</b><small>${place.road_address_name||place.address_name}</small>`;button.onclick=()=>{const p={lat:+place.y,lng:+place.x};setQuery(place.place_name);map.current.setCenter(new window.kakao.maps.LatLng(p.lat,p.lng));setOrigin(p);setNote('');setSelected(null);clear()};menu.appendChild(button)});input.parentElement.appendChild(menu)};const onInput=()=>{clearTimeout(timer);timer=setTimeout(()=>{const text=input.value.trim();if(text.length<2){clear();return}if(!window.kakao?.maps?.services)return;new window.kakao.maps.services.Places().keywordSearch(text,(result,status)=>show(status===window.kakao.maps.services.Status.OK?result.slice(0,6):[]))},250)};input.addEventListener('input',onInput);input.addEventListener('blur',()=>setTimeout(clear,150));return()=>{clearTimeout(timer);clear();input.removeEventListener('input',onInput)}},[])
+ const search=()=>{if(!query.trim()||!map.current)return;new window.kakao.maps.services.Geocoder().addressSearch(query,(r,s)=>{if(s===window.kakao.maps.services.Status.OK){const p={lat:+r[0].y,lng:+r[0].x};map.current.setCenter(new window.kakao.maps.LatLng(p.lat,p.lng));setSearchCenter(p);setNote('');setSelected(null)}else setNote('주소를 찾지 못했습니다.')})};const recenter=()=>{if(!map.current)return;const p=map.current.getCenter();setSearchCenter({lat:p.getLat(),lng:p.getLng()});setNote('');setSelected(null)}
+ useEffect(()=>{const input=document.querySelector('.address-search input');if(!input)return undefined;let timer;let menu;const clear=()=>{menu?.remove();menu=null};const show=(places)=>{clear();if(!places.length)return;menu=document.createElement('div');menu.className='autocomplete-menu';places.forEach(place=>{const button=document.createElement('button');button.innerHTML=`<b>${place.place_name}</b><small>${place.road_address_name||place.address_name}</small>`;button.onclick=()=>{const p={lat:+place.y,lng:+place.x};setQuery(place.place_name);map.current.setCenter(new window.kakao.maps.LatLng(p.lat,p.lng));setSearchCenter(p);setNote('');setSelected(null);clear()};menu.appendChild(button)});input.parentElement.appendChild(menu)};const onInput=()=>{clearTimeout(timer);timer=setTimeout(()=>{const text=input.value.trim();if(text.length<2){clear();return}if(!window.kakao?.maps?.services)return;new window.kakao.maps.services.Places().keywordSearch(text,(result,status)=>show(status===window.kakao.maps.services.Status.OK?result.slice(0,6):[]))},250)};input.addEventListener('input',onInput);input.addEventListener('blur',()=>setTimeout(clear,150));return()=>{clearTimeout(timer);clear();input.removeEventListener('input',onInput)}},[])
  const activeCategories=categories.filter(source=>tab==='전체'||source.type===tab)
- const groups=data.key===originKey?data.groups:{}
- const activeLoading=Boolean(origin)&&activeCategories.some(source=>groups[source.id]?.loading!==false)
+ const groups=data.key===searchKey?data.groups:{}
+ const activeLoading=Boolean(searchCenter)&&activeCategories.some(source=>groups[source.id]?.loading!==false)
  const errors=activeCategories.filter(source=>groups[source.id]?.error)
  return <main className="app-shell">
    <header className="topbar"><a className="brand"><span className="brand-mark">공</span>공공이</a><div className="address-search"><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>e.key==='Enter'&&search()} placeholder="도로명주소 또는 장소명 검색"/><button onClick={search}>검색</button></div></header>
    <section className="filter-row">{tabs.map(t=><button key={t} onClick={()=>{setTab(t);setSelected(null)}} className={tab===t?'filter active':'filter'}>{t}</button>)}</section>
    <section className="content-grid"><aside className="place-list">
-     <div className="list-heading"><div><p className="section-label">내 주변 시설 · 반경 3km</p><h2>가까운 순 {shown.length}곳</h2></div></div>
+     <div className="list-heading"><div><p className="section-label">검색 위치 주변 · 반경 3km</p><h2>{userPosition?'내 위치에서 가까운 순':'검색 결과'} {shown.length}곳</h2></div></div>
      {note&&<p className="data-status">{note}</p>}
      {errors.map(source=><p key={source.id} className="data-status">{source.type}: {groups[source.id].error}</p>)}
      {activeLoading&&<div className="loading"><i/> 주변 시설을 불러오는 중...</div>}
      <div className="place-items">{shown.map(x=><button key={x.id} className="place-card" onClick={()=>{setSelected(x);map.current.panTo(new window.kakao.maps.LatLng(x.lat,x.lng))}}><span className="place-icon" style={{background:'#FFFFFF'}}><img src={categoryIconUrl(x.type)} alt="" width="24" height="24" style={{objectFit:'contain'}}/></span><span className="place-info"><span className="place-title">{x.name}</span><span className="place-address">{x.address}</span><span className="place-meta">{Object.values(x.info).filter(Boolean).join(' · ')}</span></span><b className="nearby-distance">{dText(x.meters)}</b></button>)}
-     {!activeLoading&&origin&&shown.length===0&&<p className="empty">반경 3km 안에 표시할 시설이 없습니다.</p>}</div>
+     {!activeLoading&&searchCenter&&shown.length===0&&<p className="empty">반경 3km 안에 표시할 시설이 없습니다.</p>}</div>
    </aside><section className="map-panel"><div className="kakao-map" ref={el}/><button className="my-location-button" onClick={recenter}>여기에서 재검색</button>{selected&&<Popup x={selected} onClose={()=>setSelected(null)}/>}</section></section>
  </main>
 }
