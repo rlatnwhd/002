@@ -1,0 +1,70 @@
+/* Let layouts shrink and text wrap; horizontal clipping is only a final viewport guard. */
+html, body, #root { width: 100%; min-width: 0; max-width: 100%; }
+html, body { overflow-x: clip; }
+.app-shell { width: 100%; min-width: 0; overflow: visible; }
+.topbar, .welcome-banner, .filter-row, .content-grid { min-width: 0; max-width: 100%; }
+.topbar { height: auto; min-height: 64px; padding-block: 14px; flex-wrap: wrap; }
+.brand { min-width: 0; flex-wrap: wrap; white-space: normal; }
+.brand-mark, .header-caption > span, .welcome-eyebrow > span { flex-shrink: 0; }
+.header-caption { white-space: normal; overflow-wrap: anywhere; }
+.welcome-copy { flex: 1 1 0; min-width: 0; }
+.welcome-copy h1, .welcome-description, .welcome-footnote { overflow-wrap: anywhere; }
+.welcome-art { max-width: 44%; }
+.filter-row { flex-wrap: wrap; overflow: visible; }
+.filter { min-width: 0; max-width: 100%; min-height: 40px; height: auto; padding-block: 8px; white-space: normal; overflow-wrap: anywhere; }
+.filter img, .filter-grid-icon { flex-shrink: 0; }
+.content-grid { grid-template-columns: minmax(0, .77fr) minmax(0, 1.43fr); }
+.content-grid > *, .place-info, .list-heading > div { min-width: 0; }
+.list-heading { flex-wrap: wrap; gap: 8px; }
+.place-card { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; min-width: 0; }
+.place-title, .place-address, .place-meta { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; word-break: normal; }
+.place-title { line-height: 1.6; }
+.place-address, .place-meta { line-height: 1.65; }
+.nearby-distance { min-width: 0; align-self: start; }
+.data-status, .detail-address, .detail-type, .detail-card h2, .detail-stats span { overflow-wrap: anywhere; }
+.detail-card { min-width: 0; max-width: calc(100% - 24px); left: 12px; bottom: 76px; max-height: calc(100% - 92px); overflow-y: auto; overflow-x: hidden; }
+.detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.detail-stats > * { min-width: 0; }
+.close-detail { min-width: 32px; min-height: 32px; }
+.map-actions { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: 12px; display: flex; justify-content: space-between; gap: 8px; }
+.map-actions .my-location-button, .map-actions .return-location-button { position: static; transform: none; min-width: 0; max-width: 100%; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+.location-backdrop { min-width: 0; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.location-dialog { min-width: 0; max-width: 100%; max-height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.location-dialog-heading, .location-search, .location-search-status, .location-dialog-footer { flex-shrink: 0; min-width: 0; }
+.location-dialog-heading > div { min-width: 0; }
+.location-dialog-heading p, .location-search-status, .location-suggestions button, .location-confirm { overflow-wrap: anywhere; }
+.location-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.location-search input { min-width: 0; font-size: 16px; }
+.location-search > button { padding-inline: 16px; min-height: 44px; }
+.location-suggestions { max-width: 100%; max-height: min(260px, 35dvh); overflow-x: hidden; overflow-y: auto; }
+.location-suggestions b, .location-suggestions small { white-space: normal; overflow-wrap: anywhere; }
+.location-picker-map-wrap { flex: 1 0 180px; min-width: 0; }
+.location-dialog-footer { position: sticky; bottom: 0; z-index: 6; background: #fff; }
+@media (max-width: 1000px) {
+  .content-grid { grid-template-columns: minmax(0, 1fr); }
+  .map-panel { order: 1; min-height: 400px; }
+  .place-list { order: 2; }
+}
+@media (max-width: 600px) {
+  .topbar { padding-inline: 16px; gap: 10px; }
+  .welcome-banner { padding-inline: 18px; }
+  .filter-row { padding-inline: 16px; gap: 8px; }
+  .filter { font-size: 12px; padding-inline: 11px; }
+  .content-grid { padding: 16px 12px 28px; gap: 16px; }
+  .map-panel { height: clamp(360px, 60svh, 480px); min-height: 360px; }
+  .list-heading { padding: 18px 14px 12px; }
+  .place-items { padding-inline: 6px; max-height: 65dvh; overflow-x: hidden; overflow-y: auto; }
+  .place-card { padding-inline: 8px; column-gap: 9px; }
+  .detail-card { width: calc(100% - 24px); padding: 14px; }
+  .detail-stats { grid-template-columns: minmax(0, 1fr); }
+  .location-dialog-heading, .location-dialog-footer { padding: 16px; }
+  .location-search { padding-inline: 16px; }
+}
+@media (max-width: 380px) {
+  .header-caption { flex-basis: 100%; }
+  .place-card { grid-template-columns: 36px minmax(0, 1fr); row-gap: 6px; }
+  .nearby-distance { grid-column: 2; white-space: normal; overflow-wrap: anywhere; }
+  .map-actions button { flex: 1; font-size: 12px; padding: 9px 6px; }
+  .location-search { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .location-search > button { padding-block: 10px; }
+}

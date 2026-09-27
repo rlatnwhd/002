@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusMap } from './mapNavigation.js'
 import { createMarkerClusterer } from './markerClusters.js'
+import FacilityListItem from './FacilityListItem.jsx'
+import FacilityDetails from './FacilityDetails.jsx'
+import { createMarkerSelection } from './markerSelection.js'
 import LocationPicker from './LocationPicker.jsx'
 import { normalizeNoSmoking } from './noSmoking.js'
 import { fileSources } from './fileFacilities.js'
@@ -10,13 +13,15 @@ import { localIndex, localPlaces, institutionCodes, regionalRecords, runLimited 
 import './App.css'
 import './live.css'
 import './nearby.css'
+import HeaderIntro from './HeaderIntro.jsx'
+import DataSourcesFooter from './DataSourcesFooter.jsx'
+import './responsive.css'
+import './facility-details.css'
 
 const sources=[{id:'parking',type:'주차장',icon:'P',color:'#3579d6',endpoint:'tn_pubr_prkplce_info_api'},{id:'trash',type:'휴지통',icon:'T',color:'#e68126',endpoint:'tn_pubr_public_trash_can_api'},{id:'park',type:'공원',icon:'♧',color:'#2d995d',endpoint:'tn_pubr_public_cty_park_info_api'},{id:'no-smoking',type:'금연구역',endpoint:'tn_pubr_public_prhsmk_zn_api'}]
 const categories=[...sources,...fileSources]
 const tabs=['전체','주차장','휴지통','공원','화장실','금연구역','무료와이파이','자전거보관소']
 const pick=(x,k,d='')=>k.map(a=>x[a]).find(a=>a!==undefined&&a!==null&&a!=='')??d
-const formatInfo=value=>String(value??'').replace(/(?<=\S)\s*\+\s*(?=\S)/g, ', ')
-const dText=x=>x===null?'거리 확인 불가':x<1000?`${Math.round(x)}m`:`${(x/1000).toFixed(1)}km`
 let sdkPromise
 const sdk=()=>{
  if(!sdkPromise)sdkPromise=new Promise((resolve,reject)=>{
@@ -29,7 +34,6 @@ const sdk=()=>{
  return sdkPromise
 }
 function item(s,r,i){const lat=Number(pick(r,['latitude','lat','LAT'])),lng=Number(pick(r,['longitude','lot','LOT']));const name=s.id==='trash'?pick(r,['instlPlcNm'],'휴지통'):s.id==='parking'?pick(r,['prkplceNm'],'주차장'):pick(r,['parkNm'],'공원');const address=pick(r,s.id==='trash'?['lctnRoadNm','lctnLotnoAddr']:['rdnmadr','lnmadr'],'주소 미제공');const info=s.id==='trash'?{종류:pick(r,['trashCanKnd'],'미분류'),설치위치:pick(r,['actlPstn'],'미제공')}:s.id==='parking'?{구분:pick(r,['prkplceSe'],'미제공'),유형:pick(r,['prkplceType'],'미제공'),주차면수:pick(r,['prkcmprt'],'미제공'),운영요일:pick(r,['operDay'],'미제공'),평일운영:`${pick(r,['weekdayOperOpenHhmm'],'미제공')} ~ ${pick(r,['weekdayOperColseHhmm'],'미제공')}`,요금정보:pick(r,['parkingchrgeInfo'],'미제공'),기본요금:pick(r,['basicCharge'])?`${pick(r,['basicTime'],'30')}분 ${Number(pick(r,['basicCharge'])).toLocaleString()}원`:'미제공',결제방법:pick(r,['metpay'],'미제공'),관리기관:pick(r,['institutionNm'],'미제공'),전화번호:pick(r,['phoneNumber'],'미제공'),장애인주차구역:pick(r,['pwdbsPpkZoneYn'],'미제공')}:{시설구분:pick(r,['parkSe'],'공원')};return {id:`${s.id}-${i}`,type:s.type,icon:s.icon,color:s.color,name,address,lat,lng,info}}
-function Popup({x,onClose}){return <article className="detail-card"><button className="close-detail" onClick={onClose}>×</button><p className="detail-type">{x.type} · {dText(x.meters)}</p><h2>{x.name}</h2><p className="detail-address">⌖ {x.address}</p><div className="detail-stats">{Object.entries(x.info).map(([k,v])=><span key={k}><b>{k}</b> {formatInfo(v)}</span>)}</div></article>}
 export default function App(){
  const el=useRef(),map=useRef(),markers=useRef([]),user=useRef(),clusterer=useRef(null),markerTypes=useRef(new WeakMap())
  const [searchCenter,setSearchCenter]=useState(null),[tab,setTab]=useState('전체'),[selected,setSelected]=useState(null),[note,setNote]=useState('현재 위치를 확인 중입니다.')
@@ -37,6 +41,14 @@ export default function App(){
  const [pickerOpen,setPickerOpen]=useState(false),[mapReady,setMapReady]=useState(false)
  const [pickerInitial,setPickerInitial]=useState(null)
  const manuallySet=useRef(false)
+ const markerSelections=useRef(new Map()),selectedId=useRef(null)
+ const [mobileDetails,setMobileDetails]=useState(()=>window.matchMedia('(max-width: 768px)').matches)
+ useEffect(()=>{
+   const media=window.matchMedia('(max-width: 768px)')
+   const update=()=>setMobileDetails(media.matches)
+   media.addEventListener('change',update)
+   return()=>media.removeEventListener('change',update)
+ },[])
  const [data,setData]=useState({key:'',groups:{}})
  const searchKey=searchCenter?`${searchCenter.lat},${searchCenter.lng}`:''
  useEffect(()=>{
@@ -67,6 +79,7 @@ export default function App(){
    if(!map.current)return
    const center=map.current.getCenter()
    setPickerInitial({lat:center.getLat(),lng:center.getLng()})
+   setSelected(null)
    setPickerOpen(true)
  }
  const confirmLocation=position=>{
@@ -124,9 +137,15 @@ export default function App(){
    return nearest(categories.filter(source=>tab==='전체'||source.type===tab).flatMap(source=>data.groups[source.id]?.places??[]),searchCenter,100,userPosition)
  },[data,tab,searchCenter,userPosition])
  useEffect(()=>{
+   selectedId.current=selected?.id??null
+   markerSelections.current.forEach((controller,id)=>controller.setSelected(id===selectedId.current))
+ },[selected?.id])
+ useEffect(()=>{
    if(!map.current)return
    let disposed=false
    const activeMarkers=[]
+   const controllers=new Map()
+   markerSelections.current=controllers
    clusterer.current?.clear()
    markers.current.forEach(marker=>marker.setMap(null))
    markers.current=activeMarkers
@@ -139,30 +158,42 @@ export default function App(){
        for(const place of shown.filter(place=>place.type===type)){
          const marker=new maps.Marker({position:new maps.LatLng(place.lat,place.lng),title:place.name,image:markerImage})
          markerTypes.current.set(marker,place.type)
-         if(place.id===selected?.id){marker.setMap(map.current);marker.setZIndex(10)}
-         else clusterer.current.addMarker(marker,true)
-         maps.event.addListener(marker,'click',()=>setSelected(place))
+         clusterer.current.addMarker(marker,true)
+         const controller=createMarkerSelection(marker,url,maps,{
+           onSelect:()=>{clusterer.current.removeMarker(marker);marker.setMap(map.current);marker.setZIndex(10)},
+           onRelease:()=>{marker.setZIndex(0);clusterer.current.addMarker(marker)},
+         })
+         controllers.set(place.id,controller)
+         controller.setSelected(place.id===selectedId.current)
+         maps.event.addListener(marker,'click',()=>setSelected({...place}))
          activeMarkers.push(marker)
        }
        clusterer.current.redraw()
      }).catch(()=>{if(!disposed)setNote('지도 아이콘을 불러오지 못했습니다. 새로고침해주세요.')})
    }
-   return()=>{disposed=true;clusterer.current?.clear();activeMarkers.forEach(marker=>marker.setMap(null))}
- },[shown,selected?.id])
+   return()=>{
+     disposed=true
+     controllers.forEach(controller=>controller.dispose())
+     controllers.clear()
+     clusterer.current?.clear()
+     activeMarkers.forEach(marker=>marker.setMap(null))
+   }
+ },[shown])
  const activeCategories=categories.filter(source=>tab==='전체'||source.type===tab)
  const groups=data.key===searchKey?data.groups:{}
  const activeLoading=Boolean(searchCenter)&&activeCategories.some(source=>groups[source.id]?.loading!==false)
  const errors=activeCategories.filter(source=>groups[source.id]?.error)
- return <><main className="app-shell" inert={pickerOpen}>
-   <header className="topbar"><a className="brand"><span className="brand-mark">공</span>공공이</a></header>
-   <section className="filter-row">{tabs.map(t=><button key={t} onClick={()=>{setTab(t);setSelected(null)}} className={tab===t?'filter active':'filter'}>{t}</button>)}</section>
+ return <><main className="app-shell" inert={pickerOpen||Boolean(selected&&mobileDetails)}>
+   <HeaderIntro/>
+   <section className="filter-row">{tabs.map(t=><button key={t} onClick={()=>{setTab(t);setSelected(null)}} className={tab===t?'filter active':'filter'} aria-pressed={tab===t}>{t==='전체'?<span className="filter-grid-icon" aria-hidden="true"><i/><i/><i/><i/></span>:<img src={categoryIconUrl(t)} alt=""/>}{t}</button>)}</section>
    <section className="content-grid"><aside className="place-list">
      <div className="list-heading"><div><p className="section-label">검색 위치 주변 · 반경 3km</p><h2>{userPosition?'내 위치에서 가까운 순':'검색 결과'} {shown.length}곳</h2></div></div>
      {note&&<p className="data-status">{note}</p>}
      {errors.map(source=><p key={source.id} className="data-status">{source.type}: {groups[source.id].error}</p>)}
      {activeLoading&&<div className="loading"><i/> 주변 시설을 불러오는 중...</div>}
-     <div className="place-items">{shown.map(x=><button key={x.id} className="place-card" onClick={()=>{setSelected(x);focusMap(map.current,new window.kakao.maps.LatLng(x.lat,x.lng))}}><span className="place-icon" style={{background:'#FFFFFF'}}><img src={categoryIconUrl(x.type)} alt="" width="24" height="24" style={{objectFit:'contain'}}/></span><span className="place-info"><span className="place-title">{x.name}</span><span className="place-address">{x.address}</span><span className="place-meta">{Object.values(x.info).filter(Boolean).map(formatInfo).join(' · ')}</span></span><b className="nearby-distance">{dText(x.meters)}</b></button>)}
+     <div className="place-items">{shown.map(x=><FacilityListItem key={x.id} place={x} userPosition={userPosition} accordionEnabled={!mobileDetails} expanded={!mobileDetails&&selected?.id===x.id} scrollRequest={selected?.id===x.id?selected:null} onSelect={()=>{setSelected(x);focusMap(map.current,new window.kakao.maps.LatLng(x.lat,x.lng))}} onClose={()=>setSelected(null)}/>)}
      {!activeLoading&&searchCenter&&shown.length===0&&<p className="empty">반경 3km 안에 표시할 시설이 없습니다.</p>}</div>
-   </aside><section className="map-panel"><div className="kakao-map" ref={el}/><button className="my-location-button" disabled={!mapReady} onClick={openLocationPicker}>위치 수정</button>{userPosition&&<button className="return-location-button" onClick={returnToLocation}>◎ 내 위치로 이동</button>}{selected&&<Popup x={selected} onClose={()=>setSelected(null)}/>}</section></section>
- </main>{pickerOpen&&<LocationPicker initialPosition={pickerInitial} onClose={()=>setPickerOpen(false)} onConfirm={confirmLocation}/>}</>
+   </aside><section className="map-panel"><div className="kakao-map" ref={el}/><div className="map-actions"><button className="my-location-button" disabled={!mapReady} onClick={openLocationPicker}>위치 수정</button>{userPosition&&<button className="return-location-button" onClick={returnToLocation}>◎ 내 위치로 이동</button>}</div></section></section>
+ <DataSourcesFooter/>
+ </main>{selected&&mobileDetails&&<FacilityDetails key={selected.id} place={selected} userPosition={userPosition} mobile={mobileDetails} onClose={()=>setSelected(null)}/>} {pickerOpen&&<LocationPicker initialPosition={pickerInitial} onClose={()=>setPickerOpen(false)} onConfirm={confirmLocation}/>}</>
 }

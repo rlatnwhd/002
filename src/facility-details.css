@@ -1,0 +1,37 @@
+.facility-details-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.facility-details-heading .detail-type{margin:0;min-width:0;overflow-wrap:anywhere}
+.facility-details-heading .close-detail{flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:#f1f6f2}
+.facility-details .detail-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.facility-details.facility-details-desktop{position:fixed;z-index:30;left:24px;bottom:24px;width:350px;max-width:calc(100vw - 48px);max-height:calc(100dvh - 48px);padding:20px;overflow-y:auto;overscroll-behavior:contain}
+.facility-details-backdrop{position:fixed;inset:0;z-index:1000;background:rgb(15 25 20 / 45%);display:flex;align-items:flex-end;justify-content:center;padding:0;animation:facility-backdrop-in .28s ease both}
+.facility-details-backdrop.is-closing{animation:facility-backdrop-out .28s ease both}
+.facility-details.facility-details-sheet{position:relative;inset:auto;width:100%;max-width:768px;max-height:min(82dvh,760px);min-width:0;margin:0;padding:12px max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;border-radius:22px 22px 0 0;box-shadow:0 -10px 45px #0002;animation:facility-sheet-in .28s ease both}
+.facility-details.facility-details-sheet.is-closing{animation:facility-sheet-out .28s ease both}
+.facility-sheet-handle{width:40px;height:4px;margin:0 auto 14px;border-radius:4px;background:#d4dfd7}
+@keyframes facility-sheet-in{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes facility-sheet-out{from{transform:translateY(0)}to{transform:translateY(100%)}}
+@keyframes facility-backdrop-in{from{background:rgb(15 25 20 / 0%)}to{background:rgb(15 25 20 / 45%)}}
+@keyframes facility-backdrop-out{from{background:rgb(15 25 20 / 45%)}to{background:rgb(15 25 20 / 0%)}}
+.place-items{overflow-anchor:none}
+.facility-directions{margin-top:14px;min-width:0}
+.facility-directions-button{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;padding:10px 14px;border:0;border-radius:10px;background:#19724f;color:#fff;text-decoration:none;font:inherit;font-size:13px;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.facility-directions-button:hover{background:#125b3e}
+.facility-directions-button:focus-visible{outline:3px solid #94cdb0;outline-offset:3px}
+.facility-directions-button:disabled{background:#e2e9e4;color:#68776d;cursor:not-allowed}
+.facility-directions p{margin:7px 0 0;font-size:12px;color:#68776d}
+.facility-list-item{min-width:0;border-top:1px solid #eff2f0;scroll-margin-block:8px;overflow-anchor:none}
+.facility-list-item .place-card{border-top:0}
+.facility-list-item.is-expanded{border-radius:12px;background:#f3f8f4;box-shadow:inset 0 0 0 1px #dce9df}
+.facility-list-item.is-expanded .place-card{border-radius:12px 12px 0 0}
+.facility-expand-arrow{display:inline-block;transition:transform .28s ease}
+.is-expanded .facility-expand-arrow{transform:rotate(180deg)}
+.facility-accordion{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .28s ease}
+.is-expanded .facility-accordion{grid-template-rows:1fr;opacity:1}
+.facility-accordion-clip{min-height:0;overflow:hidden}
+.facility-accordion-content{padding:0 14px 14px;min-width:0;overflow-wrap:anywhere}
+.facility-accordion-content dl{margin:0;padding:12px 0;border-top:1px solid #dce9df;display:grid;gap:10px}
+.facility-accordion-content dl>div{display:grid;grid-template-columns:minmax(65px,.35fr) minmax(0,1fr);gap:10px;font-size:12px;line-height:1.7}
+.facility-accordion-content dt{color:#487354;font-weight:600}.facility-accordion-content dd{margin:0;color:#56675c;min-width:0}
+.facility-collapse{width:100%;min-height:36px;background:white;border:1px solid #dce9df;border-radius:8px;color:#4d7258;font-size:12px}
+@media(max-width:380px){.facility-details.facility-details-sheet{padding-inline:16px}.facility-details .detail-stats{grid-template-columns:minmax(0,1fr)}.facility-accordion-content dl>div{grid-template-columns:minmax(0,1fr);gap:2px}}
+@media(prefers-reduced-motion:reduce){.facility-details.facility-details-sheet,.facility-details-backdrop{animation:none}.facility-accordion,.facility-expand-arrow{transition:none}}

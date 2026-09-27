@@ -83,6 +83,9 @@ export function createMarkerClusterer(map, maps, markerTypes) {
       const type = markerTypes.get(marker)
       if (categoryMarkers[type]) getClusterer(type).addMarker(marker, noDraw)
     },
+    removeMarker(marker, noDraw = false) {
+      byType.get(markerTypes.get(marker))?.removeMarker(marker, noDraw)
+    },
     redraw() { byType.forEach(clusterer => clusterer.redraw()) },
     clear,
     destroy() { clear(); maps.event.removeListener(map, 'idle', scheduleLayout) },
