@@ -17,6 +17,7 @@ globalThis.requestAnimationFrame = fn => { scheduled = fn; return 1 }
 globalThis.cancelAnimationFrame = () => { scheduled = null }
 const handlers = new Map(), instances = []
 const maps = {
+  Point: class { constructor(x,y) { this.x=x; this.y=y } },
   MarkerClusterer: class {
     constructor(options) { this.options = options; this.markers = []; instances.push(this) }
     addMarker(marker) { this.markers.push(marker) }
@@ -28,9 +29,9 @@ const maps = {
     removeListener(target, event) { delete handlers.get(target)[event] },
   },
 }
-const map = { getProjection: () => ({ containerPointFromCoords: () => ({ x: 200, y: 200 }) }), getLevel: () => level, setLevel: next => { level = next }, setCenter: point => { center = point } }
+const map = { getProjection: () => ({ containerPointFromCoords: () => ({ x: 200, y: 200 }), coordsFromContainerPoint: point => point }), getLevel: () => level, setLevel: next => { level = next }, setCenter: point => { center = point } }
 const types = new WeakMap(), manager = createMarkerClusterer(map, maps, types)
-const elements = []
+const elements = [], overlays = []
 for (const [type, style] of Object.entries(categoryMarkers)) {
   const markers = [{}, {}]
   for (const marker of markers) { types.set(marker, type); manager.addMarker(marker, true) }
@@ -39,7 +40,9 @@ for (const [type, style] of Object.entries(categoryMarkers)) {
   assert.equal(instance.options.styles[0].background, style.color)
   const element = { style: {} }, actualCenter = { type }
   elements.push(element)
-  const cluster = { getSize: () => markers.length, getCenter: () => actualCenter, getClusterMarker: () => ({ getContent: () => element }) }
+  const overlay = { getContent: () => element, setPosition: point => { overlay.position = point }, setZIndex: z => { overlay.z = z } }
+  overlays.push(overlay)
+  const cluster = { getSize: () => markers.length, getCenter: () => actualCenter, getClusterMarker: () => overlay }
   handlers.get(instance).clustered([cluster])
   assert.ok(element.title.startsWith(`${type} 2곳`))
   level = 5
@@ -49,7 +52,13 @@ for (const [type, style] of Object.entries(categoryMarkers)) {
 }
 assert.equal(instances.length, 7)
 scheduled()
-assert.equal(new Set(elements.map(element => element.style.transform)).size, 7)
+assert.ok(elements.every(element => element.style.transform === ''))
+assert.equal(new Set(overlays.map(overlay => `${overlay.position.x},${overlay.position.y}`)).size, 7)
+assert.ok(overlays.every(overlay => overlay.z === 5))
+// A second layout uses actual cluster centers and must not accumulate offsets.
+const before = overlays.map(overlay => ({...overlay.position}))
+handlers.get(map).idle(); scheduled()
+assert.deepEqual(overlays.map(overlay => ({...overlay.position})), before)
 manager.clear()
 assert.ok(instances.every(instance => instance.markers.length === 0))
 manager.destroy()

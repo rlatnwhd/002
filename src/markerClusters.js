@@ -3,7 +3,7 @@ import { zoomIntoCluster } from './mapNavigation.js'
 
 const BADGE_SPACING = 58
 
-// Offsets affect badge artwork only, never geographic coordinates.
+// Separate display overlays without changing cluster centers or facility coordinates.
 export function separateClusterBadges(points) {
   const placed = []
   return points.map(point => {
@@ -35,14 +35,20 @@ export function createMarkerClusterer(map, maps, markerTypes) {
     for (const type of Object.keys(categoryMarkers)) {
       for (const cluster of visible.get(type) ?? []) {
         if (cluster.getSize() < 2) continue
-        const element = cluster.getClusterMarker().getContent()
+        const overlay = cluster.getClusterMarker()
+        const element = overlay.getContent()
         if (!element?.style) continue
         const point = projection.containerPointFromCoords(cluster.getCenter())
         if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue
-        badges.push({ x: point.x, y: point.y, element })
+        badges.push({ x: point.x, y: point.y, element, overlay })
       }
     }
-    for (const { element, dx, dy } of separateClusterBadges(badges)) element.style.transform = `translate(${dx}px, ${dy}px)`
+    for (const { element, overlay, x, y, dx, dy } of separateClusterBadges(badges)) {
+      // Move the whole SDK overlay so artwork and its hit area stay together.
+      element.style.transform = ''
+      overlay.setPosition(projection.coordsFromContainerPoint(new maps.Point(x + dx, y + dy)))
+      overlay.setZIndex(5)
+    }
   }
   const scheduleLayout = () => {
     if (frame === null) frame = requestAnimationFrame(layout)
@@ -62,10 +68,12 @@ export function createMarkerClusterer(map, maps, markerTypes) {
       visible.set(type, clusters)
       for (const cluster of clusters) {
         if (cluster.getSize() < 2) continue
-        const element = cluster.getClusterMarker().getContent()
+        const overlay = cluster.getClusterMarker()
+        const element = overlay.getContent()
         if (!element?.style) continue
         element.title = `${type} ${cluster.getSize()}곳 · 클릭하여 확대`
         element.style.transform = ''
+        overlay.setPosition(cluster.getCenter())
       }
       scheduleLayout()
     })

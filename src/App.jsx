@@ -1,3 +1,5 @@
+import { locationPermission } from './locationPermission.js'
+import './location-permission.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { focusMap } from './mapNavigation.js'
 import { createMarkerClusterer } from './markerClusters.js'
@@ -41,6 +43,8 @@ export default function App(){
  const [pickerOpen,setPickerOpen]=useState(false),[mapReady,setMapReady]=useState(false)
  const [pickerInitial,setPickerInitial]=useState(null)
  const manuallySet=useRef(false)
+ const permissionController=useRef(null)
+ const [locationState,setLocationState]=useState('checking')
  const markerSelections=useRef(new Map()),selectedId=useRef(null)
  const [mobileDetails,setMobileDetails]=useState(()=>window.matchMedia('(max-width: 768px)').matches)
  useEffect(()=>{
@@ -58,20 +62,27 @@ export default function App(){
      map.current=new k.maps.Map(el.current,{center:new k.maps.LatLng(37.5665,126.978),level:6})
      clusterer.current=createMarkerClusterer(map.current,k.maps,markerTypes.current)
      setMapReady(true)
-     navigator.geolocation.getCurrentPosition(({coords})=>{
-       if(disposed||manuallySet.current)return
-       const p={lat:coords.latitude,lng:coords.longitude}
-       setUserPosition(previous=>previous??p)
-       setSearchCenter(p);setNote('')
-       map.current.setCenter(new k.maps.LatLng(p.lat,p.lng))
-     },()=>{if(!disposed&&!manuallySet.current)setNote('현재 위치를 사용할 수 없습니다. 지도에서 위치 수정을 눌러주세요.')},{enableHighAccuracy:false,maximumAge:60000,timeout:8000})
+
    }).catch(()=>{if(!disposed)setNote('지도를 불러오지 못했습니다. 새로고침해주세요.')})
    return()=>{disposed=true;clusterer.current?.destroy();user.current?.setMap(null)}
+ },[])
+ useEffect(()=>{
+   const controller=locationPermission({navigator,onState:state=>{
+     setLocationState(state)
+     setNote(state==='locating'?'현재 위치를 확인 중입니다.':'')
+   },onPosition:position=>{
+     if(manuallySet.current)return
+     setUserPosition(position);setSearchCenter(position);setNote('')
+   }})
+   permissionController.current=controller
+   void controller.start()
+   return()=>controller.dispose()
  },[])
  useEffect(()=>{
    if(!mapReady||!userPosition)return
    const maps=window.kakao.maps
    const position=new maps.LatLng(userPosition.lat,userPosition.lng)
+   map.current.setCenter(position)
    if(!user.current)user.current=new maps.Marker({map:map.current,position,title:'내 위치'})
    else {user.current.setPosition(position);user.current.setMap(map.current)}
  },[mapReady,userPosition])
@@ -84,6 +95,7 @@ export default function App(){
  }
  const confirmLocation=position=>{
    manuallySet.current=true
+   permissionController.current?.useManual()
    setUserPosition(position)
    setSearchCenter(position)
    setSelected(null);setNote('');setPickerOpen(false)
@@ -178,13 +190,18 @@ export default function App(){
      clusterer.current?.clear()
      activeMarkers.forEach(marker=>marker.setMap(null))
    }
- },[shown])
+ },[shown,mapReady])
  const activeCategories=categories.filter(source=>tab==='전체'||source.type===tab)
  const groups=data.key===searchKey?data.groups:{}
  const activeLoading=Boolean(searchCenter)&&activeCategories.some(source=>groups[source.id]?.loading!==false)
  const errors=activeCategories.filter(source=>groups[source.id]?.error)
  return <><main className="app-shell" inert={pickerOpen||Boolean(selected&&mobileDetails)}>
    <HeaderIntro/>
+   {['prompt','denied','settings','error','unsupported'].includes(locationState)&&<aside className="location-permission-banner" aria-label="위치 서비스 안내">
+     <p role="status">{locationState==='settings'?'브라우저 주소창 왼쪽 자물쇠(설정) 아이콘 → 위치 → 허용으로 변경 후 새로고침해주세요':locationState==='error'?'현재 위치를 확인하지 못했어요. 기기의 위치 서비스를 확인하거나 위치 수정으로 직접 지정해주세요.':locationState==='unsupported'?'이 브라우저에서는 현재 위치를 사용할 수 없어요. 위치 수정으로 직접 지정해주세요.':'내 위치를 알려면 위치 서비스를 활성화시켜야 해요.'}</p>
+     {!['settings','unsupported'].includes(locationState)&&<button onClick={()=>permissionController.current?.confirm()}>{locationState==='error'?'다시 시도':'확인'}</button>}
+     <button className="location-manual-action" disabled={!mapReady} onClick={openLocationPicker}>위치 수정</button>
+   </aside>}
    <section className="filter-row">{tabs.map(t=><button key={t} onClick={()=>{setTab(t);setSelected(null)}} className={tab===t?'filter active':'filter'} aria-pressed={tab===t}>{t==='전체'?<span className="filter-grid-icon" aria-hidden="true"><i/><i/><i/><i/></span>:<img src={categoryIconUrl(t)} alt=""/>}{t}</button>)}</section>
    <section className="content-grid"><aside className="place-list">
      <div className="list-heading"><div><p className="section-label">검색 위치 주변 · 반경 3km</p><h2>{userPosition?'내 위치에서 가까운 순':'검색 결과'} {shown.length}곳</h2></div></div>

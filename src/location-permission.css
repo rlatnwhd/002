@@ -1,0 +1,6 @@
+.location-permission-banner{position:fixed;top:max(16px,env(safe-area-inset-top));right:16px;z-index:40;box-sizing:border-box;width:360px;max-width:calc(100% - 32px);max-height:calc(100dvh - 32px);overflow:auto;padding:18px;background:#fff;border:1px solid #dce9df;border-radius:14px;box-shadow:0 8px 32px #173f3026;display:flex;flex-wrap:wrap;gap:10px}
+.location-permission-banner p{flex:1 0 100%;min-width:0;margin:0;color:#354c3f;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.location-permission-banner button{min-height:40px;padding:9px 16px;border:0;border-radius:8px;background:#19724f;color:white;font:inherit;font-size:13px;cursor:pointer}
+.location-permission-banner .location-manual-action{background:#eef5f0;color:#285a40}
+.location-permission-banner button:disabled{opacity:.5;cursor:wait}
+.location-permission-banner button:focus-visible{outline:3px solid #94cdb0;outline-offset:2px}
