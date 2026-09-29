@@ -82,7 +82,7 @@ export default function LocationPicker({ initialPosition, onClose, onConfirm }) 
 
   return createPortal(<div className="location-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose() }}>
     <section className="location-dialog" role="dialog" aria-modal="true" aria-labelledby="location-title" ref={dialog}>
-      <header className="location-dialog-heading"><div><h2 id="location-title">위치 수정</h2><p>지도를 움직여 핀 아래에 원하는 위치를 맞춰주세요.</p></div><button type="button" className="location-close" onClick={onClose} aria-label="위치 수정 닫기">×</button></header>
+      <header className="location-dialog-heading"><div><h2 id="location-title">위치 수정</h2><p>지도를 움직여 핀 아래에 원하는 위치를 맞춰주세요.</p></div><button type="button" className="location-close" onClick={onClose} aria-label="위치 수정 닫기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg></button></header>
       <form className="location-search" onSubmit={event => { event.preventDefault(); clearTimeout(searchTimer.current); if (query.trim()) void runSearch(query, true) }}>
         <div className="location-search-field"><input ref={input} value={query} onChange={event => { request.current += 1; setQuery(event.target.value); setResults([]); setMessage(''); setBusy(false) }} placeholder="도로명주소 또는 장소명 검색" aria-label="주소 또는 장소명" autoComplete="off"/>
           {results.length > 0 && <ul className="location-suggestions">{results.map((place, i) => <li key={`${place.lat}-${place.lng}-${i}`}><button type="button" onClick={() => choose(place)}><b>{place.name}</b><small>{place.address}</small></button></li>)}</ul>}
