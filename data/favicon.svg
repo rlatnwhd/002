@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>공공이</title>
+  <rect width="64" height="64" rx="18" fill="#19724F"/>
+  <path d="M32 10c-11 0-19 8-19 18 0 13 19 28 19 28s19-15 19-28c0-10-8-18-19-18Z" fill="#FFF"/>
+  <circle cx="32" cy="28" r="10" fill="#19724F"/>
+  <circle cx="35" cy="25" r="3" fill="#BEE9CB"/>
+</svg>
