@@ -1,5 +1,6 @@
 // Keep presentation independent of cached facility data.
 export const categoryMarkers = {
+  흡연구역: { color: '#009688', file: 'smoking.png' },
   화장실: { color: '#0074FF', file: 'toilet.png' },
   무료와이파이: { color: '#BE00FF', file: 'wifi-signal.png' },
   주차장: { color: '#4B446D', file: 'parking.png' },

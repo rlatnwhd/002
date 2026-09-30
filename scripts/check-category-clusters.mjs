@@ -50,10 +50,10 @@ for (const [type, style] of Object.entries(categoryMarkers)) {
   assert.equal(center, actualCenter)
   assert.equal(level, 4)
 }
-assert.equal(instances.length, 7)
+assert.equal(instances.length, Object.keys(categoryMarkers).length)
 scheduled()
 assert.ok(elements.every(element => element.style.transform === ''))
-assert.equal(new Set(overlays.map(overlay => `${overlay.position.x},${overlay.position.y}`)).size, 7)
+assert.equal(new Set(overlays.map(overlay => `${overlay.position.x},${overlay.position.y}`)).size, Object.keys(categoryMarkers).length)
 assert.ok(overlays.every(overlay => overlay.z === 5))
 // A second layout uses actual cluster centers and must not accumulate offsets.
 const before = overlays.map(overlay => ({...overlay.position}))

@@ -19,6 +19,7 @@ export default function DataSourcesFooter() {
   return <footer className="data-sources-footer" aria-labelledby="data-sources-title">
     <h2 id="data-sources-title">데이터 출처 및 저작권</h2>
     <ul className="data-sources-grid">
+      <li><h3>흡연구역 데이터</h3><p>공개된 공식 데이터를 최대한 통합한 전국 단위 데이터셋</p></li>
       {sources.map(source => <li key={source.id}>
         <h3>{source.label} 데이터</h3>
         <SourceLink href={`https://www.data.go.kr/data/${source.id}/standard.do`}>{source.provider} · 원본 보기</SourceLink>

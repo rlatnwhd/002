@@ -1,4 +1,5 @@
 export const fileSources = [
+  { id: 'smoking', type: '흡연구역', file: 'smoking_spots_final_1430.csv', icon: 'S', color: '#009688' },
   { id: 'restroom', type: '화장실', file: 'public_restroom_info.csv', icon: 'W', color: '#8658c9' },
   { id: 'wifi', type: '무료와이파이', file: 'free_Wi-Fi_info.csv', icon: 'Wi', color: '#00838f' },
   { id: 'bicycle', type: '자전거보관소', file: 'bicycle_parking_info.csv', icon: 'B', color: '#a64d79' },
@@ -39,9 +40,9 @@ const yesNo = value => ({ Y: '있음', N: '없음' })[value.toUpperCase()] ?? va
 export function parseFacilities(text, source) {
   const rows = csvRows(text)
   const header = rows.next().value?.map(value => value.trim())
-  const nameKey = source.id === 'restroom' ? '화장실명' : source.id === 'wifi' ? '설치장소명' : '자전거보관소명'
-  const latKey = source.id === 'restroom' ? '위도' : 'WGS84위도'
-  const lngKey = source.id === 'restroom' ? '경도' : 'WGS84경도'
+  const nameKey = source.id === 'smoking' ? 'name' : source.id === 'restroom' ? '화장실명' : source.id === 'wifi' ? '설치장소명' : '자전거보관소명'
+  const latKey = source.id === 'smoking' ? 'latitude' : source.id === 'restroom' ? '위도' : 'WGS84위도'
+  const lngKey = source.id === 'smoking' ? 'longitude' : source.id === 'restroom' ? '경도' : 'WGS84경도'
   if (!header || ![nameKey, latKey, lngKey].every(key => header.includes(key))) {
     throw new Error('CSV의 필수 열 또는 인코딩을 확인해주세요.')
   }
@@ -53,7 +54,7 @@ export function parseFacilities(text, source) {
     const get = key => (row[indexes[key]] ?? '').trim()
     const lat = Number(get(latKey)), lng = Number(get(lngKey))
     if (!(lat >= 33 && lat <= 39 && lng >= 124 && lng <= 132)) { omitted += 1; continue }
-    const info = source.id === 'restroom' ? {개방시간: get('개방시간상세') || get('개방시간'), 관리기관: get('관리기관명'), 문의전화: get('전화번호')} : source.id === 'wifi' ? {
+    const info = source.id === 'smoking' ? {유형: get('type') || '정보 없음'} : source.id === 'restroom' ? {개방시간: get('개방시간상세') || get('개방시간'), 관리기관: get('관리기관명'), 문의전화: get('전화번호')} : source.id === 'wifi' ? {
       SSID: get('와이파이SSID'), 설치위치: get('설치장소상세'), 시설구분: get('설치시설구분명'),
       제공기관: get('서비스제공사명'), 관리기관: get('관리기관명'), 문의전화: get('관리기관전화번호'),
     } : {
@@ -64,8 +65,8 @@ export function parseFacilities(text, source) {
     }
     places.push({
       id: `${source.id}-${total}`, institutionCode: get('개방자치단체코드'), type: source.type, icon: source.icon, color: source.color,
-      name: get(nameKey) || source.type,
-      address: get('소재지도로명주소') || get('소재지지번주소') || (source.id === 'wifi' ? [get('설치시도명'), get('설치시군구명'), get('설치장소상세')].filter(Boolean).join(' ') : '') || '주소 미제공',
+      name: get(nameKey) || (source.id === 'smoking' ? get('address') : '') || source.type,
+      address: (source.id === 'smoking' ? get('address') : '') || get('소재지도로명주소') || get('소재지지번주소') || (source.id === 'wifi' ? [get('설치시도명'), get('설치시군구명'), get('설치장소상세')].filter(Boolean).join(' ') : '') || '주소 미제공',
       lat, lng, info: Object.fromEntries(Object.entries(info).filter(([, value]) => value)),
     })
   }

@@ -16,7 +16,7 @@ export default function FacilityListItem({ place, userPosition, expanded, accord
   return <article ref={row} className={`facility-list-item${expanded ? ' is-expanded' : ''}`}>
     <button className={`place-card${expanded ? ' selected' : ''}`} aria-expanded={accordionEnabled ? expanded : undefined} aria-controls={accordionEnabled ? detailsId : undefined} aria-haspopup={accordionEnabled ? undefined : 'dialog'} onClick={expanded ? onClose : onSelect}>
       <span className="place-icon" style={{ background: '#FFFFFF' }}><img src={categoryIconUrl(place.type)} alt="" width="24" height="24" style={{ objectFit: 'contain' }}/></span>
-      <span className="place-info"><span className="place-title">{place.name}</span><span className="place-address">{place.address}</span><span className="place-meta">{place.type} {accordionEnabled && <span aria-hidden="true" className="facility-expand-arrow">⌄</span>}</span></span>
+      <span className="place-info"><span className="place-title">{place.name}</span><span className="place-address">{place.address}</span><span className="place-meta">{place.type} {accordionEnabled && <svg aria-hidden="true" focusable="false" className="facility-expand-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}</span></span>
       <b className="nearby-distance">{distanceText(place.meters)}</b>
     </button>
     {accordionEnabled && <div id={detailsId} className="facility-accordion" aria-hidden={!expanded} inert={!expanded}>

@@ -22,7 +22,7 @@ import './facility-details.css'
 
 const sources=[{id:'parking',type:'주차장',icon:'P',color:'#3579d6',endpoint:'tn_pubr_prkplce_info_api'},{id:'trash',type:'휴지통',icon:'T',color:'#e68126',endpoint:'tn_pubr_public_trash_can_api'},{id:'park',type:'공원',icon:'♧',color:'#2d995d',endpoint:'tn_pubr_public_cty_park_info_api'},{id:'no-smoking',type:'금연구역',endpoint:'tn_pubr_public_prhsmk_zn_api'}]
 const categories=[...sources,...fileSources]
-const tabs=['전체','주차장','휴지통','공원','화장실','금연구역','무료와이파이','자전거보관소']
+const tabs=['전체','주차장','휴지통','공원','화장실','금연구역','흡연구역','무료와이파이','자전거보관소']
 const pick=(x,k,d='')=>k.map(a=>x[a]).find(a=>a!==undefined&&a!==null&&a!=='')??d
 let sdkPromise
 const sdk=()=>{

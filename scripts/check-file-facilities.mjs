@@ -36,3 +36,11 @@ for (const source of fileSources) {
   console.log(`${source.type}: 총 ${result.total}, 지도 표시 ${result.places.length}, 좌표 제외 ${result.omitted}`)
 }
 console.log('PASS: CSV quoting, multiline, encoding, required headers, coordinates, field mapping, unique IDs')
+
+const smoking = fileSources.find(source => source.id === 'smoking')
+const smokingSample = parseFacilities('name,address,latitude,longitude,type,region,source,quality\n,서울 건물 옥상,37.5,127,개방형,서울,공식 자료,verified\n이름,,,127,,,,', smoking)
+assert.equal(smokingSample.places[0].name, '서울 건물 옥상')
+assert.equal(smokingSample.places[0].info.유형, '개방형')
+assert.deepEqual(smokingSample.places[0].info, {유형: '개방형'})
+assert.equal(smokingSample.omitted, 1)
+assert.ok(!('quality' in smokingSample.places[0].info))
